@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 client = discord.Client()
 discord.opus.load_opus
-roll_command = "/croll"
+roll_command = "!pls"
 
 FirstConnect=True
 LastPlayingIndex=-1
@@ -106,6 +106,7 @@ Examples:
     70/30 + 5 = 35
 
     /croll 2p70t
+    A
     Failure: 0/50/70 + 4 = 74
 ```
 """
@@ -167,7 +168,7 @@ async def cyclePlaying():
 @client.event
 async def on_ready():
     global FirstConnect
-    print("Dorian connected")
+    print("Azathoth connected")
     if FirstConnect:
         FirstConnect = False
         #while True:
@@ -188,5 +189,5 @@ async def on_message(message):
             em.description=None
             await message.channel.send(embed=em)
     
-token=environ['DORIAN_TOKEN']
+token=environ['AZATHOTH_TOKEN']
 client.run(token)
