@@ -51,7 +51,7 @@ def resolve_dice(bonus_die, penalty_die, threshold):
     for i in range(penalty_die):
         ten_result_pool.append(roll_die(0, 9))
 
-    ten_result = max(ten_result_pool)
+    ten_result = max(ten_result_pool) if penalty_die else min(ten_result_pool)
     combined_result = (ten_result * 10) + one_result
     desc = "%d(%s) + %d = %d" % (
         ten_result * 10,
