@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 client = discord.Client()
 discord.opus.load_opus
-roll_command = "!pls"
+roll_command = "!c"
 
 FirstConnect=True
 LastPlayingIndex=-1
