@@ -57,10 +57,12 @@ def resolve_dice(bonus_die, penalty_die, threshold):
         ten_result * 10,
         "/".join([str(i * 10) for i in ten_result_pool]),
         one_result,
-        combined_result,
+        combined_result
     )
     if not threshold:
         return desc
+
+    ret=DiceResult()
 
     if combined_result == 1:
         title, colour = "Critical Success!", COL_CRIT_SUCCESS
@@ -74,20 +76,22 @@ def resolve_dice(bonus_die, penalty_die, threshold):
         title, colour = "Success", COL_NORM_SUCCESS
     else:
         title, colour = "Failure", COL_NORM_FAILURE
-
-    return DiceResult(title, colour, desc)
+    
+    ret.title, ret.desc, ret.colour = title, desc, colour
+    return ret
 
 
 def parse_roll(dice_string):
-    fail = """
+    fail = f"""
 Unable to parse dice command. Usage:
 ```
-/croll [[number=1][die type]]...[[score][threshold]]
+{roll_command} [[number=1][die type]]...[[score][threshold]]
 
+B
 Die Types:
     b: Bonus dice (can't be chained with Penalty)
     p: Penalty dice (can't be chained with Bonus)
-    t: threshold to determine success/fail. Score is required if a threshold is set.
+    t: Threshold to determine success/fail. Score is required if a threshold is set.
 
 Examples:
     /croll
