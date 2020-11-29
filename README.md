@@ -9,7 +9,7 @@ A Call of Cthulhu dice roller bot for Discord.
 Created for simplicity. Rolls a d100 with optional bonus or penalty dice, and optional threshold for determining levels of success or failure.
 
 ```text
-/croll [[number=1][die type]]...[[score][threshold]]
+!c [[number=1][die type]]...[[score][threshold]]
 
 Die Types:
     b: Bonus dice (can't be chained with Penalty)
