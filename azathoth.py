@@ -68,6 +68,8 @@ def resolve_dice(bonus_die, penalty_die, threshold):
         title, colour = "Critical Success!", COL_CRIT_SUCCESS
     elif combined_result == 100:
         title, colour = "Critical Failure!", COL_CRIT_FAILURE
+    elif combined_result >=96 and threshold < 50:
+        title, colour = "Critical Failure!", COL_CRIT_FAILURE
     elif combined_result <= threshold / 5:
         title, colour = "Extreme Success!", COL_EXTR_SUCCESS
     elif combined_result <= threshold / 2:
