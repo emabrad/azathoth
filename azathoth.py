@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import discord
+import os
 import re
+import discord
 import logging
 import asyncio
-from os import environ
+
 from random import randint
 
 logging.basicConfig(level=logging.INFO)
@@ -12,80 +13,73 @@ client = discord.Client()
 discord.opus.load_opus
 roll_command = "!c"
 
-FirstConnect=True
-LastPlayingIndex=-1
-PlayingQuotes = {
-        1: "with dice",
-        2: "second item"
-    }
+first_connect = True
+last_playing_index = -1
+playing_quotes = {1: "with dice", 2: "second item"}
 
-COL_CRIT_SUCCESS=0xFFFFFF
-COL_EXTR_SUCCESS=0xf1c40f
-COL_HARD_SUCCESS=0x2ecc71
-COL_NORM_SUCCESS=0x2e71cc
-COL_NORM_FAILURE=0xe74c3c
-COL_CRIT_FAILURE=0x992d22
+COL_CRIT_SUCCESS = 0xFFFFFF
+COL_EXTR_SUCCESS = 0xF1C40F
+COL_HARD_SUCCESS = 0x2ECC71
+COL_NORM_SUCCESS = 0x2E71CC
+COL_NORM_FAILURE = 0xE74C3C
+COL_CRIT_FAILURE = 0x992D22
+
 
 class DiceResult:
-    def __init__(self):
-        self.title=""
-        self.desc=""
-        self.colour=COL_NORM_SUCCESS
+    def __init__(self, title=None, desc=None, colour=COL_NORM_SUCCESS):
+        self.title = title
+        self.desc = desc
+        self.colour = COL_NORM_SUCCESS
 
-def RollDie(min=1, max=10):
-    result = randint(min,max)
+
+def roll_die(min=1, max=10):
+    result = randint(min, max)
     return result
 
-def ResolveDice(BonusDie, PenaltyDie, Threshold):
-  TenResultPool = []
-  TenResultPool.append(RollDie(0, 9))
 
-  TenResult = min(TenResultPool)
-  OneResult = RollDie()
+def resolve_dice(bonus_die, penalty_die, threshold):
+    ten_result = roll_die(0, 9)
+    ten_result_pool = [ten_result]
+    one_result = roll_die()
 
-  if BonusDie > 0 and PenaltyDie > 0:
-      return "Can't chain bonus and penalty dice"
+    if bonus_die > 0 and penalty_die > 0:
+        return "Can't chain bonus and penalty dice"
 
-  for i in range(BonusDie):
-      TenResultPool.append(RollDie(0, 9))
-      TenResult = min(TenResultPool)
-  
-  for i in range(PenaltyDie):
-      TenResultPool.append(RollDie(0, 9))
-      TenResult = max(TenResultPool)
+    for i in range(bonus_die):
+        ten_result_pool.append(roll_die(0, 9))
 
-  CombinedResult = (TenResult*10) + OneResult
-  desc = str(TenResult*10) + '(' + '/'.join([str(i*10) for i in TenResultPool]) + ') + ' + str(OneResult) + ' = ' + str(CombinedResult)
+    for i in range(penalty_die):
+        ten_result_pool.append(roll_die(0, 9))
 
-  if Threshold:
-    ret = DiceResult()
-    if CombinedResult == 1:
-      ret.title = "Critical Success!"
-      ret.colour = COL_CRIT_SUCCESS
-    elif CombinedResult == 100:
-      ret.title = "Critical Failure!"
-      ret.colour = COL_CRIT_FAILURE
-    elif CombinedResult <= Threshold/5:
-      ret.title = "Extreme Success!"
-      ret.colour = COL_EXTR_SUCCESS
-    elif CombinedResult <= Threshold/2:
-      ret.title = "Hard Success!"
-      ret.colour = COL_HARD_SUCCESS
-    elif CombinedResult <= Threshold:
-      ret.title = "Success"
-      ret.colour = COL_NORM_SUCCESS
+    ten_result = max(ten_result_pool) if penalty_die else min(ten_result_pool)
+    combined_result = (ten_result * 10) + one_result
+    desc = "%d(%s) + %d = %d" % (
+        ten_result * 10,
+        "/".join([str(i * 10) for i in ten_result_pool]),
+        one_result,
+        combined_result,
+    )
+    if not threshold:
+        return desc
+
+    if combined_result == 1:
+        title, colour = "Critical Success!", COL_CRIT_SUCCESS
+    elif combined_result == 100:
+        title, colour = "Critical Failure!", COL_CRIT_FAILURE
+    elif combined_result <= threshold / 5:
+        title, colour = "Extreme Success!", COL_EXTR_SUCCESS
+    elif combined_result <= threshold / 2:
+        title, colour = "Hard Success!", COL_HARD_SUCCESS
+    elif combined_result <= threshold:
+        title, colour = "Success", COL_NORM_SUCCESS
     else:
-      ret.title = "Failure"
-      ret.colour = COL_NORM_FAILURE
+        title, colour = "Failure", COL_NORM_FAILURE
 
-    ret.desc = desc
-    return ret
-  else:
-    ret = desc
-    return ret
+    return DiceResult(title, colour, desc)
 
-def parseRoll(diceString):
-    fail="""
+
+def parse_roll(dice_string):
+    fail = """
 Unable to parse dice command. Usage:
 ```
 /croll [[number=1][die type]]...[[score][threshold]]
@@ -93,7 +87,7 @@ Unable to parse dice command. Usage:
 Die Types:
     b: Bonus dice (can't be chained with Penalty)
     p: Penalty dice (can't be chained with Bonus)
-    t: Threshold to determine success/fail. Score is required if a threshold is set.
+    t: threshold to determine success/fail. Score is required if a threshold is set.
 
 Examples:
     /croll
@@ -110,84 +104,76 @@ Examples:
     Failure: 0/50/70 + 4 = 74
 ```
 """
-    dice=[x for x in re.split('(\d*?[bpt])',diceString) if x]
+    dice = [x for x in re.split(r"(\d*?[bpt])", dice_string) if x]
 
-    if len(dice) > 1 and 'b' in diceString and 'p' in diceString:
+    if len(dice) > 1 and "b" in dice_string and "p" in dice_string:
         return "Can't chain bonus and penalty dice"
-    
-    BonusDie=0
-    PenaltyDie=0
-    Threshold=False
+
+    bonus_die = 0
+    penalty_die = 0
+    threshold = False
 
     for die in dice:
         default_num = False
-        s=re.search('(\d*?)([bpt])', die)
+        s = re.search(r"(\d*?)([bpt])", die)
         if not s:
             default_num = True
-            die="1"+die
-        s=re.search('(\d*?)([bpt])', die)
+            die = "1" + die
+        s = re.search(r"(\d*?)([bpt])", die)
         if not s:
             return fail
-        g=s.groups()
+        g = s.groups()
         if len(g) != 2:
             return fail
         try:
-            num=int(g[0])
+            num = int(g[0])
         except:
             default_num = True
-            num=1
+            num = 1
 
-        dieCode=g[1]
-        
-        if len(dieCode) > 1:
+        die_code = g[1]
+
+        if len(die_code) > 1:
             return fail
 
-        if dieCode == 'b':
-            BonusDie = num
+        if die_code == "b":
+            bonus_die = num
 
-        if dieCode == 'p':
-            PenaltyDie = num
+        if die_code == "p":
+            penalty_die = num
 
-        if  dieCode == 't':
+        if die_code == "t":
             if default_num:
-              return "Threshold requires a value!"
+                return "threshold requires a value!"
             else:
-              Threshold = num
-        
-    return ResolveDice(BonusDie, PenaltyDie, Threshold)
+                threshold = num
 
-async def cyclePlaying():
-    global LastPlayingIndex
-    playing=PlayingQuotes[randint(1,len(PlayingQuotes))]
-    while playing == LastPlayingIndex:
-        playing=PlayingQuotes[randint(1,len(PlayingQuotes))]
-    LastPlayingIndex=playing
-    #await client.change_presence(game=discord.Game(name=playing))
-    await asyncio.sleep(randint(60,600))
+    return resolve_dice(bonus_die, penalty_die, threshold)
+
 
 @client.event
 async def on_ready():
-    global FirstConnect
+    global first_connect
     print("Azathoth connected")
-    if FirstConnect:
-        FirstConnect = False
-        #while True:
-            #await asyncio.ensure_future(cyclePlaying())
-        
+    if first_connect:
+        first_connect = False
+
+
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
     if message.content.startswith(roll_command):
-        result = parseRoll(message.content[len(roll_command)+1:])
+        result = parse_roll(message.content[len(roll_command) + 1 :])
         if isinstance(result, str):
             await message.channel.send(result)
         else:
             em = discord.Embed(title=result.title, description=result.desc, colour=result.colour)
             em.set_footer(text=result.desc)
-            em.description=None
+            em.description = None
             await message.channel.send(embed=em)
-    
-token=environ['AZATHOTH_TOKEN']
+
+
+token = os.environ["AZATHOTH_TOKEN"]
 client.run(token)
